@@ -29,8 +29,17 @@ export default class Scheduler {
         this._maxConcurrentTasks = maxConcurrentTasks;
     }
 
-    enqueue<T>(task: SchedulableTask<T>): Promise<T> {
+    enqueue<T>(task: SchedulableTask<T> | Promise<T>): Promise<T> {
         return new Promise((resolve, reject) => {
+            if (task instanceof Promise) {
+                const promise = task;
+                task = {
+                    priority: 0,
+                    execute(): Promise<T> {
+                        return promise;
+                    }
+                };
+            }
             if (this._checkMutexes(task)) {
                 this._queue.push({
                     resolve: resolve,
