@@ -1,11 +1,16 @@
-import { expect } from 'chai';
+import {expect} from 'chai';
 import 'mocha';
 import Scheduler from "./Scheduler";
+import {SchedulableTask, TaskCollisionStrategy} from "./SchedulableTask";
 
 function wait(timeout: number): Promise<void> {
     return new Promise<void>((resolve) => {
         setTimeout(resolve, timeout);
     });
+}
+
+interface SchedulableNumberTask extends SchedulableTask<number> {
+    extraVarNumber: number;
 }
 
 describe('Scheduler', () => {
@@ -30,7 +35,7 @@ describe('Scheduler', () => {
         let promises = shuffledNumbers.map((nbr) => scheduler.enqueue({
             priority: nbr,
             execute(): Promise<number> {
-                return new Promise<number>((resolve, reject) => {
+                return new Promise<number>((resolve) => {
                     setTimeout(() => resolve(nbr), 80 * Math.random());
                 })
             },
@@ -54,7 +59,7 @@ describe('Scheduler', () => {
         numbers.forEach((nbr) => scheduler.enqueue({
             priority: nbr,
             execute(): Promise<number> {
-                return new Promise<number>((resolve, reject) => {
+                return new Promise<number>((resolve) => {
                     setTimeout(() => resolve(nbr), 200);
                 })
             },
@@ -111,7 +116,7 @@ describe('Scheduler', () => {
         let promises = [1, 2, 3, 6, 7].map((nbr) => scheduler.enqueue({
             priority: nbr,
             execute(): Promise<number> {
-                return new Promise<number>((resolve, reject) => {
+                return new Promise<number>((resolve) => {
                     setTimeout(() => resolve(nbr), 100);
                 })
             },
@@ -125,7 +130,7 @@ describe('Scheduler', () => {
             ...([4, 5].map((nbr) => scheduler.enqueue({
                 priority: nbr,
                 execute(): Promise<number> {
-                    return new Promise<number>((resolve, reject) => {
+                    return new Promise<number>((resolve) => {
                         setTimeout(() => resolve(nbr), 100);
                     })
                 },
@@ -138,6 +143,31 @@ describe('Scheduler', () => {
         console.log("Result: ", result);
         console.log("Execution order: ", executionOrder);
         expect(executionOrder).to.eql([7, 6, 5, 4, 3, 2, 1]);
+    });
+
+    it('should cancel tasks based on mutex collisions', async () => {
+        let scheduler = new Scheduler(2);
+
+        let allPromises = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9].map((nbr) => scheduler.enqueue({
+            priority: 0,
+            mutex: 1 << Math.floor(nbr / 2),
+            extraVarNumber: nbr,
+            execute(): Promise<number> {
+                return new Promise<number>((resolve) => {
+                    setTimeout(() => resolve(nbr));
+                })
+            },
+            onTaskCollision(other: SchedulableTask<any>): TaskCollisionStrategy {
+                if ((other as SchedulableNumberTask).extraVarNumber <= nbr) {
+                    return TaskCollisionStrategy.KEEP_OTHER;
+                } else {
+                    return TaskCollisionStrategy.KEEP_THIS;
+                }
+            }
+        } as SchedulableNumberTask).catch(() => -1 * nbr));
+
+        let result = await Promise.all(allPromises);
+        expect(result).to.eql([ 0, -1, 2, -3, 4, -5, 6, -7, 8, -9 ]);
     });
 
 });

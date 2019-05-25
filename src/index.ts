@@ -1,7 +1,10 @@
 import Scheduler from "./Scheduler";
-import {SchedulableTask} from "./SchedulableTask";
+import {SchedulableTask, TaskCollisionStrategy} from "./SchedulableTask";
+import SchedulerError from "./SchedulerError";
 
 export {
     Scheduler,
-    SchedulableTask
+    SchedulableTask,
+    TaskCollisionStrategy,
+    SchedulerError
 };

@@ -1,4 +1,5 @@
-import {SchedulableTask} from "./SchedulableTask";
+import {SchedulableTask, TaskCollisionStrategy} from "./SchedulableTask";
+import SchedulerError from "./SchedulerError";
 
 enum ExecutionState {
     PENDING = 0,
@@ -33,6 +34,7 @@ export default class Scheduler {
                 state: ExecutionState.PENDING
             });
             this._applyPriorities();
+            this._applyMutexes();
             if (!this._isExecuting) {
                 this._isExecuting = true;
                 // Queue will be executed on next tick
@@ -41,16 +43,16 @@ export default class Scheduler {
         });
     }
 
-    private _applyPriorities() {
-        this._queue.sort((a, b) => b.task.priority - a.task.priority);
-    }
-
     get executingTasks(): number {
         return this._queue.reduce((count, task) => (task.state === ExecutionState.EXECUTING) ? count + 1 : count, 0);
     }
 
     private _findFirstPendingTask(): ScheduledTask<any> | undefined {
         return this._queue.find((task) => task.state === ExecutionState.PENDING);
+    }
+
+    private _removeTaskAt(index: number) {
+        this._queue.splice(index, 1);
     }
 
     private async _executeTask<T>(task: ScheduledTask<T>): Promise<T> {
@@ -64,7 +66,7 @@ export default class Scheduler {
         } finally {
             task.state = ExecutionState.TERMINATED;
             let index = this._queue.indexOf(task);
-            this._queue.splice(index, 1);
+            this._removeTaskAt(index);
             this._executeNextTasks();
         }
     }
@@ -85,6 +87,66 @@ export default class Scheduler {
             }
             task.state = ExecutionState.EXECUTING;
             this._executeTask(task).then(task.resolve).catch(task.reject);
+        }
+    }
+
+    private _applyPriorities() {
+        this._queue.sort((a, b) => b.task.priority - a.task.priority);
+    }
+
+    private _applyMutexes() {
+        for (let i = 0 ; i < this._queue.length ; i++) {
+            let taskA = this._queue[i];
+            if (taskA.state === ExecutionState.TERMINATED) {
+                // Terminated tasks will be ignored
+                continue;
+            }
+            for (let j = i + 1 ; j < this._queue.length ; j++) {
+                let taskB = this._queue[j];
+                if (taskB.state === ExecutionState.TERMINATED) {
+                    // Terminated tasks will be ignored
+                    continue;
+                }
+                if (taskA.state === ExecutionState.EXECUTING && taskB.state === ExecutionState.EXECUTING) {
+                    // Skip check if both tasks are already running
+                    continue;
+                }
+                if (taskA.task.priority != taskB.task.priority) {
+                    // Skip check and go to next "taskA" if both tasks have different priorities
+                    break;
+                }
+                if (!taskA.task.mutex || !taskB.task.mutex || (taskA.task.mutex & taskB.task.mutex) === 0) {
+                    // If mutexes do not collide, skip check
+                    continue;
+                }
+                if (taskA.task.onTaskCollision) {
+                    let strategy = taskA.task.onTaskCollision(taskB.task);
+                    if (strategy === TaskCollisionStrategy.KEEP_OTHER && taskA.state !== ExecutionState.EXECUTING) {
+                        this._removeTaskAt(i--);
+                        taskA.reject(new SchedulerError(50, "Task has been canceled in favor of another task"));
+                        continue;
+                    } else if (strategy === TaskCollisionStrategy.KEEP_THIS) {
+                        this._removeTaskAt(j--);
+                        taskB.reject(new SchedulerError(50, "Task has been canceled in favor of another task"));
+                        continue;
+                    }
+                }
+                if (taskB.task.onTaskCollision) {
+                    let strategy = taskB.task.onTaskCollision(taskA.task);
+                    if (strategy === TaskCollisionStrategy.KEEP_OTHER && taskB.state !== ExecutionState.EXECUTING) {
+                        this._removeTaskAt(j--);
+                        taskB.reject(new SchedulerError(50, "Task has been canceled in favor of another task"));
+                        continue;
+                    } else if (strategy === TaskCollisionStrategy.KEEP_THIS) {
+                        this._removeTaskAt(i--);
+                        taskA.reject(new SchedulerError(50, "Task has been canceled in favor of another task"));
+                        continue;
+                    }
+                }
+                // Apply default action by keeping the first task and ditching the second one
+                this._removeTaskAt(j--);
+                taskB.reject(new SchedulerError(50, "Task has been canceled in favor of another task"));
+            }
         }
     }
 
