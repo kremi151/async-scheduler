@@ -1,0 +1,23 @@
+{
+  "name": "async-scheduler",
+  "version": "1.0.0",
+  "license": "MIT",
+  "main": "src/index.ts",
+  "typings": "src/index.ts",
+  "scripts": {
+    "build": "gulp",
+    "pub": "yarn publish dist",
+    "test": "mocha -r ts-node/register src/**/*.spec.ts"
+  },
+  "dependencies": {},
+  "devDependencies": {
+    "@types/chai": "^4.1.7",
+    "@types/mocha": "^5.2.6",
+    "chai": "^4.2.0",
+    "gulp": "^4.0.2",
+    "gulp-typescript": "^5.0.1",
+    "mocha": "^6.1.4",
+    "ts-node": "^8.1.1",
+    "typescript": "^3.4.5"
+  }
+}
