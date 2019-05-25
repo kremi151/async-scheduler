@@ -1,7 +1,8 @@
 export enum TaskCollisionStrategy {
     DEFAULT = 0,
     KEEP_THIS = 1,
-    KEEP_OTHER = 2
+    KEEP_OTHER = 2,
+    KEEP_BOTH = 3
 }
 
 export interface SchedulableTask<T> {

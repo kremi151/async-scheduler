@@ -116,25 +116,31 @@ export default class Scheduler {
                 // If mutexes do not collide, skip check
                 continue;
             }
+            let strategyA;
+            let strategyB;
             if (taskA.task.onTaskCollision) {
-                let strategy = taskA.task.onTaskCollision(newTask);
-                if (strategy === TaskCollisionStrategy.KEEP_OTHER && taskA.state !== ExecutionState.EXECUTING) {
+                strategyA = taskA.task.onTaskCollision(newTask);
+                if (strategyA === TaskCollisionStrategy.KEEP_OTHER && taskA.state !== ExecutionState.EXECUTING) {
                     this._removeTaskAt(i--);
                     taskA.reject(newCanceledError());
                     continue;
-                } else if (strategy === TaskCollisionStrategy.KEEP_THIS) {
+                } else if (strategyA === TaskCollisionStrategy.KEEP_THIS) {
                     return false;
                 }
             }
             if (newTask.onTaskCollision) {
-                let strategy = newTask.onTaskCollision(taskA.task);
-                if (strategy === TaskCollisionStrategy.KEEP_OTHER) {
+                strategyB = newTask.onTaskCollision(taskA.task);
+                if (strategyB === TaskCollisionStrategy.KEEP_OTHER) {
                     return false;
-                } else if (strategy === TaskCollisionStrategy.KEEP_THIS) {
+                } else if (strategyB === TaskCollisionStrategy.KEEP_THIS) {
                     this._removeTaskAt(i--);
                     taskA.reject(newCanceledError());
                     continue;
                 }
+            }
+            if (strategyA === TaskCollisionStrategy.KEEP_BOTH && strategyB === TaskCollisionStrategy.KEEP_BOTH) {
+                // Both tasks chose to ignore the collision, so both tasks will be kept
+                continue;
             }
             // Apply default action by keeping the already existing task and rejecting the new one
             return false;
