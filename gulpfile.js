@@ -20,4 +20,10 @@ task('package_json', function(cb) {
     cb();
 });
 
-task('default', series(['build', 'package_json']));
+task('readme', function(cb) {
+    fs.copyFileSync('README.MD', 'dist/README.MD');
+    fs.copyFileSync('LICENSE', 'dist/LICENSE');
+    cb();
+});
+
+task('default', series(['build', 'package_json', 'readme']));

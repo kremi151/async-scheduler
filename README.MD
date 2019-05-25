@@ -2,6 +2,18 @@
 
 A promise based task scheduler written in TypeScript (compatible with JavaScript ES2015).
 
+## Install
+
+Using Yarn:
+````
+yarn add async-scheduler
+````
+
+Using NPM:
+````
+npm i async-scheduler
+````
+
 ## Basic usage
 
 To get started, simply create a new Scheduler instance and enqueue some promises.
