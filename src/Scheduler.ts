@@ -17,10 +17,6 @@ interface ScheduledTask<T> {
     state: ExecutionState;
 }
 
-function newCanceledError() {
-    return new SchedulerError(50, "Task has been canceled in favor of another task");
-}
-
 export default class Scheduler {
 
     private readonly _maxConcurrentTasks: number;
@@ -60,13 +56,17 @@ export default class Scheduler {
                     setTimeout(this._executeNextTasks.bind(this));
                 }
             } else {
-                reject(newCanceledError());
+                reject(this.createCanceledError());
             }
         });
     }
 
     get executingTasks(): number {
         return this._queue.reduce((count, task) => (task.state === ExecutionState.EXECUTING) ? count + 1 : count, 0);
+    }
+
+    protected createCanceledError() {
+        return new SchedulerError(50, "Task has been canceled in favor of another task");
     }
 
     private _findFirstPendingTask(): ScheduledTask<any> | undefined {
@@ -137,7 +137,7 @@ export default class Scheduler {
                 strategyA = taskA.task.onTaskCollision(newTask);
                 if (strategyA === TaskCollisionStrategy.KEEP_OTHER && taskA.state !== ExecutionState.EXECUTING) {
                     this._removeTaskAt(i--);
-                    taskA.reject(newCanceledError());
+                    taskA.reject(this.createCanceledError());
                     continue;
                 } else if (strategyA === TaskCollisionStrategy.KEEP_THIS) {
                     return false;
@@ -149,7 +149,7 @@ export default class Scheduler {
                     return false;
                 } else if (strategyB === TaskCollisionStrategy.KEEP_THIS) {
                     this._removeTaskAt(i--);
-                    taskA.reject(newCanceledError());
+                    taskA.reject(this.createCanceledError());
                     continue;
                 }
             }
