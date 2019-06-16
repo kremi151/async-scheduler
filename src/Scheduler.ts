@@ -14,18 +14,21 @@ interface Resolvable<T> {
     reject(error?: any): void;
 }
 
-interface ScheduledTask<T> extends Resolvable<T>{
-    resolve(result: T): void;
-    reject(error?: any): void;
-
+interface ScheduledTask<T> {
     readonly task: SchedulableTask<T>;
     state: ExecutionState;
-    listeners?: Resolvable<T>[];
+    listeners: Resolvable<T>[];
 }
 
 interface MutexCheckResult<T> {
     task?: ScheduledTask<T>;
     canceled: boolean;
+}
+
+function rejectTask(task: ScheduledTask<any>, error: any) {
+    for (let listener of task.listeners) {
+        listener.reject(error);
+    }
 }
 
 export default class Scheduler {
@@ -119,24 +122,15 @@ export default class Scheduler {
                 return;
             }
             task.state = ExecutionState.EXECUTING;
-            let promise = this._executeTask(task)
-                .then((result) => {
-                    task.resolve(result);
+            const promise = this._executeTask(task);
+            for (let listener of task.listeners) {
+                promise.then((result) => {
+                    listener.resolve(result);
                     return result;
                 }).catch((error) => {
-                    task.reject(error);
+                    listener.reject(error);
                     return error;
                 });
-            if (task.listeners) {
-                for (let listener of task.listeners) {
-                    promise.then((result) => {
-                        listener.resolve(result);
-                        return result;
-                    }).catch((error) => {
-                        listener.reject(error);
-                        return error;
-                    });
-                }
             }
         }
     }
@@ -166,7 +160,7 @@ export default class Scheduler {
                 strategyA = taskA.task.onTaskCollision(newTask);
                 if (strategyA === TaskCollisionStrategy.KEEP_OTHER && taskA.state !== ExecutionState.EXECUTING) {
                     this._removeTaskAt(i--);
-                    taskA.reject(this.createCanceledError());
+                    rejectTask(taskA, this.createCanceledError());
                     continue;
                 } else if (strategyA === TaskCollisionStrategy.KEEP_THIS) {
                     return { canceled: true };
@@ -175,19 +169,20 @@ export default class Scheduler {
                     return {
                         canceled: false,
                         task: {
-                            resolve: resolve,
-                            reject: reject,
                             task: newTask,
                             state: ExecutionState.PENDING,
                             listeners: [
-                                taskA,
-                                ...(taskA.listeners || [])
+                                {
+                                    resolve: resolve,
+                                    reject: reject
+                                },
+                                ...taskA.listeners
                             ]
                         }
                     };
                 } else if (strategyA === TaskCollisionStrategy.RESOLVE_THIS) {
                     taskA.listeners = [
-                        ...(taskA.listeners || []),
+                        ...taskA.listeners,
                         {
                             resolve: resolve,
                             reject: reject
@@ -202,11 +197,11 @@ export default class Scheduler {
                     return { canceled: true };
                 } else if (strategyB === TaskCollisionStrategy.KEEP_THIS) {
                     this._removeTaskAt(i--);
-                    taskA.reject(this.createCanceledError());
+                    rejectTask(taskA, this.createCanceledError());
                     continue;
                 } else if (strategyB === TaskCollisionStrategy.RESOLVE_OTHER) {
                     taskA.listeners = [
-                        ...(taskA.listeners || []),
+                        ...taskA.listeners,
                         {
                             resolve: resolve,
                             reject: reject
@@ -218,13 +213,14 @@ export default class Scheduler {
                     return {
                         canceled: false,
                         task: {
-                            resolve: resolve,
-                            reject: reject,
                             task: newTask,
                             state: ExecutionState.PENDING,
                             listeners: [
-                                taskA,
-                                ...(taskA.listeners || [])
+                                {
+                                    resolve: resolve,
+                                    reject: reject
+                                },
+                                ...taskA.listeners
                             ]
                         }
                     };
@@ -240,10 +236,14 @@ export default class Scheduler {
         return {
             canceled: false,
             task: {
-                resolve: resolve,
-                reject: reject,
                 task: newTask,
-                state: ExecutionState.PENDING
+                state: ExecutionState.PENDING,
+                listeners: [
+                    {
+                        resolve: resolve,
+                        reject: reject
+                    }
+                ]
             }
         };
     }
