@@ -1,6 +1,7 @@
 import {SchedulableTask, TaskCollisionStrategy} from "./SchedulableTask";
 import SchedulerError from "./SchedulerError";
 import {mutexEquality, SchedulerMutexStrategy} from "./SchedulerMutexStrategy";
+import {SchedulerOptions} from "./SchedulerOptions";
 
 enum ExecutionState {
     PENDING = 0,
@@ -23,13 +24,15 @@ function newCanceledError() {
 export default class Scheduler {
 
     private readonly _maxConcurrentTasks: number;
+    private readonly _samePriorityMutex: boolean;
     private readonly _mutexStrategy: SchedulerMutexStrategy;
     private _queue: ScheduledTask<any>[] = [];
     private _isExecuting: boolean = false;
 
-    constructor(maxConcurrentTasks: number, mutexStrategy: SchedulerMutexStrategy = mutexEquality) {
+    constructor(maxConcurrentTasks: number, options: SchedulerOptions = {}) {
         this._maxConcurrentTasks = maxConcurrentTasks;
-        this._mutexStrategy = mutexStrategy;
+        this._samePriorityMutex = !!options.samePriorityMutex;
+        this._mutexStrategy = options.mutexStrategy || mutexEquality;
     }
 
     enqueue<T>(task: SchedulableTask<T> | Promise<T>): Promise<T> {
@@ -120,7 +123,7 @@ export default class Scheduler {
                 // Terminated tasks will be ignored
                 continue;
             }
-            if (taskA.task.priority != newTask.priority) {
+            if (this._samePriorityMutex && taskA.task.priority != newTask.priority) {
                 // Skip check if not the same priority
                 continue;
             }
