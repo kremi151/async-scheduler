@@ -34,7 +34,7 @@ describe('Scheduler', () => {
             priority: nbr,
             execute(): Promise<number> {
                 return new Promise<number>((resolve) => {
-                    setTimeout(() => resolve(nbr), 80 * Math.random());
+                    setTimeout(() => resolve(nbr), 10 * Math.random());
                 })
             },
             onPreExecute(): void {
@@ -56,7 +56,7 @@ describe('Scheduler', () => {
             priority: nbr,
             execute(): Promise<number> {
                 return new Promise<number>((resolve) => {
-                    setTimeout(() => resolve(nbr), 200);
+                    setTimeout(() => resolve(nbr), 10);
                 })
             },
             onPreExecute(): void {
@@ -64,15 +64,15 @@ describe('Scheduler', () => {
             }
         }));
 
-        await wait(100);
+        await wait(5);
         expect(scheduler.executingTasks).to.equal(2);
         expect(executionOrder).to.eql([5, 4]);
 
-        await wait(200);
+        await wait(10);
         expect(scheduler.executingTasks).to.equal(2);
         expect(executionOrder).to.eql([5, 4, 3, 2]);
 
-        await wait(200);
+        await wait(10);
         expect(scheduler.executingTasks).to.equal(1);
         expect(executionOrder).to.eql([5, 4, 3, 2, 1]);
     });
@@ -108,21 +108,21 @@ describe('Scheduler', () => {
             priority: nbr,
             execute(): Promise<number> {
                 return new Promise<number>((resolve) => {
-                    setTimeout(() => resolve(nbr), 100);
+                    setTimeout(() => resolve(nbr), 10);
                 })
             },
             onPreExecute(): void {
                 executionOrder.push(nbr);
             }
         }));
-        await wait(50);
+        await wait(5);
         promises = [
             ...promises,
             ...([4, 5].map((nbr) => scheduler.enqueue({
                 priority: nbr,
                 execute(): Promise<number> {
                     return new Promise<number>((resolve) => {
-                        setTimeout(() => resolve(nbr), 100);
+                        setTimeout(() => resolve(nbr), 10);
                     })
                 },
                 onPreExecute(): void {
