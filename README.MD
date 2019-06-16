@@ -60,7 +60,7 @@ Another detail: Newly enqueued tasks do not affect already running ones.
 
 It is possible to disallow two specific tasks from running at the same time by cancelling one of them.
 This can be done by using mutexes. A mutex is simply a number which can be allocated to a task (similar to ``priority``).
-Two tasks "collide" with each other when they have the same priority and their mutexes are equal (using the default configuration).
+Two tasks "collide" with each other when their mutexes are equal (using the default configuration).
 An optional configuration allows two tasks to "collide" when the bitwise ``&`` operation of their mutexes gives a value different than ``0``.
 
 ````typescript
@@ -107,3 +107,5 @@ Available collision strategies:
 * TaskCollisionStrategy.KEEP_THIS - Keep the current task and reject the other one
 * TaskCollisionStrategy.KEEP_OTHER - Reject the current task and keep the other one
 * TaskCollisionStrategy.KEEP_BOTH - Keep both tasks. This will only be applied if both tasks in question return this as their collision strategy.
+* TaskCollisionStrategy.RESOLVE_THIS - Remove the other task from the queue and let it resolve using this task
+* TaskCollisionStrategy.RESOLVE_OTHER - Resolve the current task using the other one 
