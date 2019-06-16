@@ -9,12 +9,23 @@ enum ExecutionState {
     TERMINATED = 2
 }
 
-interface ScheduledTask<T> {
+interface Resolvable<T> {
+    resolve(result: T): void;
+    reject(error?: any): void;
+}
+
+interface ScheduledTask<T> extends Resolvable<T>{
     resolve(result: T): void;
     reject(error?: any): void;
 
     readonly task: SchedulableTask<T>;
     state: ExecutionState;
+    listeners?: Resolvable<T>[];
+}
+
+interface MutexCheckResult<T> {
+    task?: ScheduledTask<T>;
+    canceled: boolean;
 }
 
 export default class Scheduler {
@@ -42,23 +53,23 @@ export default class Scheduler {
                     }
                 };
             }
-            if (this._checkMutexes(task)) {
-                this._queue.push({
-                    resolve: resolve,
-                    reject: reject,
-                    task: task,
-                    state: ExecutionState.PENDING
-                });
-                this._applyPriorities();
-                if (!this._isExecuting) {
-                    this._isExecuting = true;
-                    // Queue will be executed on next tick
-                    setTimeout(this._executeNextTasks.bind(this));
-                }
-            } else {
+            const mutexResult = this._checkMutexes(task, resolve, reject);
+            if (mutexResult.task) {
+                this._addTask(mutexResult.task);
+            } else if (mutexResult.canceled) {
                 reject(this.createCanceledError());
             }
         });
+    }
+
+    private _addTask<T>(task: ScheduledTask<T>) {
+        this._queue.push(task);
+        this._applyPriorities();
+        if (!this._isExecuting) {
+            this._isExecuting = true;
+            // Queue will be executed on next tick
+            setTimeout(this._executeNextTasks.bind(this));
+        }
     }
 
     get executingTasks(): number {
@@ -100,7 +111,7 @@ export default class Scheduler {
         }
         let launchable = this._maxConcurrentTasks - executing;
         for (let i = 0 ; i < launchable ; i++) {
-            let task = this._findFirstPendingTask();
+            const task = this._findFirstPendingTask();
             if (!task) {
                 if (executing === 0) {
                     this._isExecuting = false;
@@ -108,7 +119,25 @@ export default class Scheduler {
                 return;
             }
             task.state = ExecutionState.EXECUTING;
-            this._executeTask(task).then(task.resolve).catch(task.reject);
+            let promise = this._executeTask(task)
+                .then((result) => {
+                    task.resolve(result);
+                    return result;
+                }).catch((error) => {
+                    task.reject(error);
+                    return error;
+                });
+            if (task.listeners) {
+                for (let listener of task.listeners) {
+                    promise.then((result) => {
+                        listener.resolve(result);
+                        return result;
+                    }).catch((error) => {
+                        listener.reject(error);
+                        return error;
+                    });
+                }
+            }
         }
     }
 
@@ -116,7 +145,7 @@ export default class Scheduler {
         this._queue.sort((a, b) => b.task.priority - a.task.priority);
     }
 
-    private _checkMutexes(newTask: SchedulableTask<any>): boolean {
+    private _checkMutexes<T>(newTask: SchedulableTask<T>, resolve: (result: any) => void, reject: (error: any) => void): MutexCheckResult<T> {
         for (let i = 0 ; i < this._queue.length ; i++) {
             let taskA = this._queue[i];
             if (taskA.state === ExecutionState.TERMINATED) {
@@ -140,17 +169,65 @@ export default class Scheduler {
                     taskA.reject(this.createCanceledError());
                     continue;
                 } else if (strategyA === TaskCollisionStrategy.KEEP_THIS) {
-                    return false;
+                    return { canceled: true };
+                } else if (strategyA === TaskCollisionStrategy.RESOLVE_OTHER) {
+                    this._removeTaskAt(i--);
+                    return {
+                        canceled: false,
+                        task: {
+                            resolve: resolve,
+                            reject: reject,
+                            task: newTask,
+                            state: ExecutionState.PENDING,
+                            listeners: [
+                                taskA,
+                                ...(taskA.listeners || [])
+                            ]
+                        }
+                    };
+                } else if (strategyA === TaskCollisionStrategy.RESOLVE_THIS) {
+                    taskA.listeners = [
+                        ...(taskA.listeners || []),
+                        {
+                            resolve: resolve,
+                            reject: reject
+                        }
+                    ];
+                    return { canceled: false };
                 }
             }
             if (newTask.onTaskCollision) {
                 strategyB = newTask.onTaskCollision(taskA.task);
                 if (strategyB === TaskCollisionStrategy.KEEP_OTHER) {
-                    return false;
+                    return { canceled: true };
                 } else if (strategyB === TaskCollisionStrategy.KEEP_THIS) {
                     this._removeTaskAt(i--);
                     taskA.reject(this.createCanceledError());
                     continue;
+                } else if (strategyB === TaskCollisionStrategy.RESOLVE_OTHER) {
+                    taskA.listeners = [
+                        ...(taskA.listeners || []),
+                        {
+                            resolve: resolve,
+                            reject: reject
+                        }
+                    ];
+                    return { canceled: false };
+                } else if (strategyB === TaskCollisionStrategy.RESOLVE_THIS) {
+                    this._removeTaskAt(i--);
+                    return {
+                        canceled: false,
+                        task: {
+                            resolve: resolve,
+                            reject: reject,
+                            task: newTask,
+                            state: ExecutionState.PENDING,
+                            listeners: [
+                                taskA,
+                                ...(taskA.listeners || [])
+                            ]
+                        }
+                    };
                 }
             }
             if (strategyA === TaskCollisionStrategy.KEEP_BOTH && strategyB === TaskCollisionStrategy.KEEP_BOTH) {
@@ -158,9 +235,17 @@ export default class Scheduler {
                 continue;
             }
             // Apply default action by keeping the already existing task and rejecting the new one
-            return false;
+            return { canceled: true };
         }
-        return true;
+        return {
+            canceled: false,
+            task: {
+                resolve: resolve,
+                reject: reject,
+                task: newTask,
+                state: ExecutionState.PENDING
+            }
+        };
     }
 
 }

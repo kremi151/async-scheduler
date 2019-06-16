@@ -159,4 +159,29 @@ describe('Scheduler', () => {
         expect(result).to.eql([ 0, -1, 2, -3, 4, -5, 6, -7, 8, -9 ]);
     });
 
+    it('should allow tasks to resolve each other in case of collision', async () => {
+        let scheduler = new Scheduler(2);
+
+        let allPromises = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9].map((nbr) => scheduler.enqueue({
+            priority: 0,
+            mutex: 1 << Math.floor(nbr / 2),
+            extraVarNumber: nbr,
+            execute(): Promise<number> {
+                return new Promise<number>((resolve) => {
+                    setTimeout(() => resolve(nbr));
+                })
+            },
+            onTaskCollision(other: SchedulableTask<any>): TaskCollisionStrategy {
+                if ((other as SchedulableNumberTask).extraVarNumber <= nbr) {
+                    return TaskCollisionStrategy.RESOLVE_OTHER;
+                } else {
+                    return TaskCollisionStrategy.RESOLVE_THIS;
+                }
+            }
+        } as SchedulableNumberTask));
+
+        let result = await Promise.all(allPromises);
+        expect(result).to.eql([ 0, 0, 2, 2, 4, 4, 6, 6, 8, 8 ]);
+    });
+
 });
