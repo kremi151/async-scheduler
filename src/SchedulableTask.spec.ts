@@ -28,8 +28,6 @@ describe('Scheduler', () => {
         // Shuffle array
         shuffledNumbers.sort(() => Math.random() - 0.5);
 
-        console.log("Shuffled number array: ", shuffledNumbers);
-
         let executionOrder: number[] = [];
 
         let promises = shuffledNumbers.map((nbr) => scheduler.enqueue({
@@ -44,9 +42,7 @@ describe('Scheduler', () => {
             }
         }));
 
-        let result = await Promise.all(promises);
-        console.log("Result: ", result);
-        console.log("Execution order: ", executionOrder);
+        await Promise.all(promises);
 
         expect(executionOrder).to.eql(sortedNumbers);
     });
@@ -69,17 +65,14 @@ describe('Scheduler', () => {
         }));
 
         await wait(100);
-        console.log("Execution order: ", executionOrder);
         expect(scheduler.executingTasks).to.equal(2);
         expect(executionOrder).to.eql([5, 4]);
 
         await wait(200);
-        console.log("Execution order: ", executionOrder);
         expect(scheduler.executingTasks).to.equal(2);
         expect(executionOrder).to.eql([5, 4, 3, 2]);
 
         await wait(200);
-        console.log("Execution order: ", executionOrder);
         expect(scheduler.executingTasks).to.equal(1);
         expect(executionOrder).to.eql([5, 4, 3, 2, 1]);
     });
@@ -94,7 +87,6 @@ describe('Scheduler', () => {
             }
         }));
         let result = await Promise.all(promises);
-        console.log("Intermediate result: ", result);
         expect(result).to.eql([1, 2, 3, 4, 5]);
 
         promises = [6, 7, 8, 9, 10].map((nbr) => scheduler.enqueue({
@@ -104,7 +96,6 @@ describe('Scheduler', () => {
             }
         }));
         result = await Promise.all(promises);
-        console.log("Final result: ", result);
         expect(result).to.eql([6, 7, 8, 9, 10]);
     });
 
@@ -139,9 +130,7 @@ describe('Scheduler', () => {
                 }
             })))
         ];
-        let result = await Promise.all(promises);
-        console.log("Result: ", result);
-        console.log("Execution order: ", executionOrder);
+        await Promise.all(promises);
         expect(executionOrder).to.eql([7, 6, 5, 4, 3, 2, 1]);
     });
 
