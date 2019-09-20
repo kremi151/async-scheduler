@@ -7,13 +7,16 @@ export enum TaskCollisionStrategy {
     RESOLVE_OTHER = 5,
 }
 
-export interface SchedulableTask<T> {
+export interface SchedulableTask<T, Meta={[key:string]:any}> {
 
     readonly priority: number;
     readonly mutex?: number;
 
+    readonly descriptor?: number;
+    readonly meta?: Meta;
+
     execute(): Promise<T>;
     onPreExecute?(): void;
-    onTaskCollision?(other: SchedulableTask<any>): TaskCollisionStrategy;
+    onTaskCollision?(other: SchedulableTask<any, any>): TaskCollisionStrategy;
 
 }

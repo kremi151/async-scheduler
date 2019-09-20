@@ -45,7 +45,7 @@ export default class Scheduler {
         this._mutexStrategy = options.mutexStrategy || mutexEquality;
     }
 
-    enqueue<T>(task: SchedulableTask<T> | Promise<T>): Promise<T> {
+    enqueue<T, M>(task: SchedulableTask<T, M> | Promise<T>): Promise<T> {
         return new Promise((resolve, reject) => {
             if (task instanceof Promise) {
                 const promise = task;
@@ -139,7 +139,7 @@ export default class Scheduler {
         this._queue.sort((a, b) => b.task.priority - a.task.priority);
     }
 
-    private _checkMutexes<T>(newTask: SchedulableTask<T>, resolve: (result: any) => void, reject: (error: any) => void): MutexCheckResult<T> {
+    private _checkMutexes<T, M>(newTask: SchedulableTask<T, M>, resolve: (result: any) => void, reject: (error: any) => void): MutexCheckResult<T> {
         for (let i = 0 ; i < this._queue.length ; i++) {
             let taskA = this._queue[i];
             if (taskA.state === ExecutionState.TERMINATED) {

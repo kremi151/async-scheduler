@@ -9,7 +9,7 @@ function wait(timeout: number): Promise<void> {
     });
 }
 
-interface SchedulableNumberTask extends SchedulableTask<number> {
+interface TestMeta {
     extraVarNumber: number;
 }
 
@@ -140,20 +140,23 @@ describe('Scheduler', () => {
         let allPromises = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9].map((nbr) => scheduler.enqueue({
             priority: 0,
             mutex: 1 << Math.floor(nbr / 2),
-            extraVarNumber: nbr,
+            meta: {
+                extraVarNumber: nbr,
+            },
             execute(): Promise<number> {
                 return new Promise<number>((resolve) => {
                     setTimeout(() => resolve(nbr));
                 })
             },
-            onTaskCollision(other: SchedulableTask<any>): TaskCollisionStrategy {
-                if ((other as SchedulableNumberTask).extraVarNumber <= nbr) {
+            onTaskCollision(other: SchedulableTask<number, TestMeta>): TaskCollisionStrategy {
+                expect(other.meta).to.be.ok;
+                if (other.meta!.extraVarNumber <= nbr) {
                     return TaskCollisionStrategy.KEEP_OTHER;
                 } else {
                     return TaskCollisionStrategy.KEEP_THIS;
                 }
             }
-        } as SchedulableNumberTask).catch(() => -1 * nbr));
+        } as SchedulableTask<number, TestMeta>).catch(() => -1 * nbr));
 
         let result = await Promise.all(allPromises);
         expect(result).to.eql([ 0, -1, 2, -3, 4, -5, 6, -7, 8, -9 ]);
@@ -165,20 +168,23 @@ describe('Scheduler', () => {
         let allPromises = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9].map((nbr) => scheduler.enqueue({
             priority: 0,
             mutex: 1 << Math.floor(nbr / 2),
-            extraVarNumber: nbr,
+            meta: {
+                extraVarNumber: nbr,
+            },
             execute(): Promise<number> {
                 return new Promise<number>((resolve) => {
                     setTimeout(() => resolve(nbr));
                 })
             },
-            onTaskCollision(other: SchedulableTask<any>): TaskCollisionStrategy {
-                if ((other as SchedulableNumberTask).extraVarNumber <= nbr) {
+            onTaskCollision(other: SchedulableTask<number, TestMeta>): TaskCollisionStrategy {
+                expect(other.meta).to.be.ok;
+                if (other.meta!.extraVarNumber <= nbr) {
                     return TaskCollisionStrategy.RESOLVE_OTHER;
                 } else {
                     return TaskCollisionStrategy.RESOLVE_THIS;
                 }
             }
-        } as SchedulableNumberTask));
+        } as SchedulableTask<number, TestMeta>));
 
         let result = await Promise.all(allPromises);
         expect(result).to.eql([ 0, 0, 2, 2, 4, 4, 6, 6, 8, 8 ]);
