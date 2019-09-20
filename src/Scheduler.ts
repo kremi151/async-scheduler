@@ -2,6 +2,7 @@ import {SchedulableTask, TaskCollisionStrategy} from "./SchedulableTask";
 import SchedulerError from "./SchedulerError";
 import {mutexEquality, SchedulerMutexStrategy} from "./SchedulerMutexStrategy";
 import {SchedulerOptions} from "./SchedulerOptions";
+import Builder from "./Builder";
 
 enum ExecutionState {
     PENDING = 0,
@@ -63,6 +64,10 @@ export default class Scheduler {
                 reject(this.createCanceledError());
             }
         });
+    }
+
+    prepare<T>(task: () => Promise<T>): Builder<T, any> {
+        return new Builder(task, this);
     }
 
     private _addTask<T>(task: ScheduledTask<T>) {

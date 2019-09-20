@@ -7,6 +7,7 @@ export enum TaskCollisionStrategy {
     RESOLVE_OTHER = 5,
 }
 
+// TODO: Keep synchronized with Builder
 export interface SchedulableTask<T, Meta={[key:string]:any}> {
 
     readonly priority: number;
