@@ -11,7 +11,8 @@
   "scripts": {
     "build": "gulp",
     "pub": "yarn publish dist",
-    "test": "mocha -r ts-node/register src/**/*.spec.ts"
+    "test": "mocha -r ts-node/register src/**/*.spec.ts",
+    "test-jenkins": "JUNIT_REPORT_PATH=/report.xml mocha --colors --reporter mocha-jenkins-reporter -r ts-node/register src/**/*.spec.ts"
   },
   "dependencies": {},
   "devDependencies": {
@@ -21,6 +22,7 @@
     "gulp": "^4.0.2",
     "gulp-typescript": "^5.0.1",
     "mocha": "^6.1.4",
+    "mocha-jenkins-reporter": "^0.4.2",
     "ts-node": "^8.1.1",
     "typescript": "^3.4.5"
   },
