@@ -12,7 +12,7 @@
     "build": "gulp",
     "pub": "yarn publish dist",
     "test": "mocha -r ts-node/register src/**/*.spec.ts",
-    "test-jenkins": "JUNIT_REPORT_PATH=/report.xml mocha --colors --reporter mocha-jenkins-reporter -r ts-node/register src/**/*.spec.ts"
+    "test-jenkins": "JUNIT_REPORT_PATH=build/test-results/test/report.xml JUNIT_REPORT_STACK=1 JUNIT_REPORT_PACKAGES=1 JENKINS_REPORTER_TEST_DIR=.. mocha --colors --reporter mocha-jenkins-reporter -r ts-node/register src/**/*.spec.ts"
   },
   "dependencies": {},
   "devDependencies": {
