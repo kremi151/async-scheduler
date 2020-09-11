@@ -1,5 +1,7 @@
 # async-scheduler
 
+![CI](https://github.com/kremi151/async-scheduler/workflows/CI/badge.svg)
+
 A promise based task scheduler written in TypeScript (compatible with JavaScript ES2015).
 
 ## Install
