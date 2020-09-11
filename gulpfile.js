@@ -15,8 +15,8 @@ task('determine_version', (cb) => {
     }
     const match = /([0-9]+)\.([0-9]+)\.([0-9]+)/.exec(AS_VERSION);
     if (!match) {
-        log.error(`Given value for environment variable AS_VERSION does not contain a valid version string: ${AS_VERSION}`);
-        cb('Invalid version string');
+        log.error(`Given value for environment variable AS_VERSION does not contain a valid version string: "${AS_VERSION}", this is not a release build`);
+        cb();
         return;
     }
     asVersion = {
