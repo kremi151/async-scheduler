@@ -1,6 +1,7 @@
 # async-scheduler
 
 ![CI](https://github.com/kremi151/async-scheduler/workflows/CI/badge.svg)
+![NPM](https://img.shields.io/npm/v/async-scheduler?color=green)
 
 A promise based task scheduler written in TypeScript (compatible with JavaScript ES2015).
 
