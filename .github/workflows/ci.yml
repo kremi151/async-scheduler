@@ -24,6 +24,12 @@ jobs:
         uses: borales/actions-yarn@v2.0.0
         with:
           cmd: test-jenkins
+      - name: Report test results
+        uses: ashley-taylor/junit-report-annotations-action@master
+        with:
+          access-token: ${{ secrets.GITHUB_TOKEN }}
+          path: "${{ github.workspace }}/build/test-results/test/*.xml"
+        if: always()
       - name: Validate
         uses: borales/actions-yarn@v2.0.0
         with:
