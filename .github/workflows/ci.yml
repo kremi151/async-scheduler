@@ -40,7 +40,7 @@ jobs:
         env:
           AS_VERSION: ${{ github.ref }}
       - name: Prepare publish
-        run: echo "//registry.npmjs.org/:_authToken=${{ secrets.NPM_ACCESS_TOKEN }}" > ~/.npmrc
+        run: echo "//registry.npmjs.org/:_authToken=${{ secrets.NPM_ACCESS_TOKEN }}" > ./.npmrc
       - name: Publish
         uses: borales/actions-yarn@v2.0.0
         with:
