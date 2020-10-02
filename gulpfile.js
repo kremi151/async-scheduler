@@ -90,10 +90,10 @@ task('npm_publish', (cb) => {
         cb();
         return;
     }
-    const { NPM_ACCESS_TOKEN } = process.env;
-    if (!NPM_ACCESS_TOKEN) {
+    const { NODE_AUTH_TOKEN } = process.env;
+    if (!NODE_AUTH_TOKEN) {
         log.error('No NPM access token set via environment variables');
-        cb('No NPM_ACCESS_TOKEN set');
+        cb('No NODE_AUTH_TOKEN set');
         return;
     }
     const { stdout, stderr, on } = spawn('npm', ['publish', '--access', 'public'], {
