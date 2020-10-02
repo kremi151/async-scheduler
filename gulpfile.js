@@ -90,13 +90,7 @@ task('yarn_publish', (cb) => {
         cb();
         return;
     }
-    const { NODE_AUTH_TOKEN } = process.env;
-    if (!NODE_AUTH_TOKEN) {
-        log.error('No NPM access token set via environment variables');
-        cb('No NODE_AUTH_TOKEN set');
-        return;
-    }
-    const proc = spawn('yarn', ['publish', '--access', 'public'], {
+    const proc = spawn('yarn', ['publish'], {
         cwd: path.resolve('dist'),
         shell: true,
         env: process.env,
