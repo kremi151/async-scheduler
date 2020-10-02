@@ -96,14 +96,14 @@ task('npm_publish', (cb) => {
         cb('No NODE_AUTH_TOKEN set');
         return;
     }
-    const { stdout, stderr, on } = spawn('npm', ['publish', '--access', 'public'], {
+    const proc = spawn('npm', ['publish', '--access', 'public'], {
         cwd: path.resolve('dist'),
         shell: true,
         env: process.env,
     });
-    stdout.on('data', (data) => log(`${data}`));
-    stderr.on('data', (data) => log.error(`${data}`));
-    on('exit', (code) => code === 0 ? cb() : cb(code));
+    proc.stdout.on('data', (data) => log(`${data}`));
+    proc.stderr.on('data', (data) => log.error(`${data}`));
+    proc.on('exit', (code) => code === 0 ? cb() : cb(code));
 });
 
 task('build', series([
