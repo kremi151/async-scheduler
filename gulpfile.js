@@ -84,7 +84,7 @@ task('check_package_json_version', async () => {
     await packageJsonContainsVersion(path.resolve('dist', 'package.json'), expectedVersion);
 });
 
-task('npm_publish', (cb) => {
+task('yarn_publish', (cb) => {
     if (!asVersion) {
         log('Not a release build, skipping publication');
         cb();
@@ -96,7 +96,7 @@ task('npm_publish', (cb) => {
         cb('No NODE_AUTH_TOKEN set');
         return;
     }
-    const proc = spawn('npm', ['publish', '--access', 'public'], {
+    const proc = spawn('yarn', ['publish', '--access', 'public'], {
         cwd: path.resolve('dist'),
         shell: true,
         env: process.env,
@@ -121,7 +121,7 @@ task('validate', series([
 task('publish', series([
     'determine_version',
     'validate',
-    'npm_publish',
+    'yarn_publish',
 ]));
 
 task('default', series([
