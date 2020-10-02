@@ -3,6 +3,7 @@ const ts = require('gulp-typescript');
 const fs = require('fs');
 const path = require('path');
 const log = require('fancy-log');
+const { spawn } = require('child_process');
 
 let asVersion = null;
 
@@ -83,6 +84,28 @@ task('check_package_json_version', async () => {
     await packageJsonContainsVersion(path.resolve('dist', 'package.json'), expectedVersion);
 });
 
+task('npm_publish', (cb) => {
+    if (!asVersion) {
+        log('Not a release build, skipping publication');
+        cb();
+        return;
+    }
+    const { NPM_ACCESS_TOKEN } = process.env;
+    if (!NPM_ACCESS_TOKEN) {
+        log.error('No NPM access token set via environment variables');
+        cb('No NPM_ACCESS_TOKEN set');
+        return;
+    }
+    const { stdout, stderr, on } = spawn('npm', ['publish', '--access', 'public'], {
+        cwd: path.resolve('dist'),
+        shell: true,
+        env: process.env,
+    });
+    stdout.on('data', (data) => log(`${data}`));
+    stderr.on('data', (data) => log.error(`${data}`));
+    on('exit', (code) => code === 0 ? cb() : cb(code));
+});
+
 task('build', series([
     'determine_version',
     'compile',
@@ -93,6 +116,12 @@ task('build', series([
 task('validate', series([
     'determine_version',
     'check_package_json_version',
+]));
+
+task('publish', series([
+    'determine_version',
+    'validate',
+    'npm_publish',
 ]));
 
 task('default', series([

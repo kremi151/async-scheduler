@@ -11,7 +11,7 @@
   "scripts": {
     "build": "gulp build",
     "validate": "gulp validate",
-    "pub": "yarn publish dist",
+    "pub": "gulp publish",
     "test": "mocha -r ts-node/register src/**/*.spec.ts",
     "test-jenkins": "JUNIT_REPORT_PATH=build/test-results/test/report.xml JUNIT_REPORT_STACK=1 JUNIT_REPORT_PACKAGES=1 JENKINS_REPORTER_TEST_DIR=.. mocha --colors --reporter mocha-jenkins-reporter -r ts-node/register src/**/*.spec.ts"
   },
