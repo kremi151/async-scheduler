@@ -26,7 +26,7 @@ import {Scheduler} from "async-scheduler";
 
 let scheduler = new Scheduler(2); // Maximal 2 concurrent task executions
 
-scheduler.enqueue(asyncFunction())
+scheduler.enqueue(() => asyncFunction())
     .then(result => console.log("Success! ", result))
     .catch(error => console.log("Error... ", error));
 ````

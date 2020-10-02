@@ -46,15 +46,23 @@ export default class Scheduler {
         this._mutexStrategy = options.mutexStrategy || mutexEquality;
     }
 
-    enqueue<T, M>(task: SchedulableTask<T, M> | Promise<T>): Promise<T> {
+    enqueue<T, M>(task: SchedulableTask<T, M> | (() => Promise<T>) | Promise<T>): Promise<T> {
         return new Promise((resolve, reject) => {
             if (task instanceof Promise) {
+                console.warn('Providing a promise directly to Scheduler#enqueue is discouraged as the scheduler ' +
+                    'will have no control over the execution. Please consider providing a function which creates a ' +
+                    'promise. The ability to provide a Promise directly will be removed in a future release.');
                 const promise = task;
                 task = {
                     priority: 0,
                     execute(): Promise<T> {
                         return promise;
                     }
+                };
+            } else if (typeof task === 'function') {
+                task = {
+                    priority: 0,
+                    execute: task,
                 };
             }
             const mutexResult = this._checkMutexes(task, resolve, reject);
