@@ -39,6 +39,7 @@ export default class Scheduler {
     private readonly _mutexStrategy: SchedulerMutexStrategy;
     private _queue: ScheduledTask<any>[] = [];
     private _isExecuting: boolean = false;
+    private _idleListeners: Resolvable<void>[] = [];
 
     constructor(maxConcurrentTasks: number, options: SchedulerOptions = {}) {
         this._maxConcurrentTasks = maxConcurrentTasks;
@@ -130,7 +131,7 @@ export default class Scheduler {
             const task = this._findFirstPendingTask();
             if (!task) {
                 if (executing === 0) {
-                    this._isExecuting = false;
+                    this._switchToIdle();
                 }
                 return;
             }
@@ -146,6 +147,21 @@ export default class Scheduler {
                 });
             }
         }
+    }
+
+    private _switchToIdle() {
+        this._isExecuting = false;
+        for (const { resolve } of this._idleListeners) {
+            try {
+                resolve();
+            } catch (e) {}
+        }
+    }
+
+    waitForIdle(): Promise<void> {
+        return new Promise((resolve, reject) => {
+            this._idleListeners.push({ resolve, reject });
+        });
     }
 
     private _applyPriorities() {
