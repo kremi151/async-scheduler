@@ -112,3 +112,27 @@ Available collision strategies:
 * TaskCollisionStrategy.KEEP_BOTH - Keep both tasks. This will only be applied if both tasks in question return this as their collision strategy.
 * TaskCollisionStrategy.RESOLVE_THIS - Remove the other task from the queue and let it resolve using this task
 * TaskCollisionStrategy.RESOLVE_OTHER - Resolve the current task using the other one 
+
+## Waiting for scheduler to become idle
+
+Sometimes it might be useful to wait for the scheduler to become idle, especially when tasks enqueue sub tasks within the same scheduler.
+
+This can be achieved using `Scheduler.waitForIdle()`:
+
+````typescript
+import {Scheduler, TaskCollisionStrategy} from "async-scheduler";
+
+let scheduler = new Scheduler(10);
+
+scheduler.enqueue(async () => {
+    scheduler.enqueue(async () => {
+        scheduler.enqueue(async () => {
+         // Enqueue as many sub tasks as you like
+        });
+    });
+});
+
+// Let's wait for every (sub) task to complete
+scheduler.waitForIdle()
+    .then(() => console.log('The scheduler is now idle!'));
+````
