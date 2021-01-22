@@ -195,21 +195,26 @@ describe('Scheduler', () => {
 
         const executed: number[] = [];
 
-        [0, 1, 2, 3, 4, 5, 6, 7, 8, 9].forEach(i => {
-            scheduler.enqueue({
-                priority: 1,
-                execute: () => new Promise((resolve) => {
-                    setTimeout(() => {
-                        executed.push(i);
-                        resolve();
+        [0, 1, 2, 3].forEach(i => {
+            scheduler.enqueue(() => new Promise((resolve) => {
+                setTimeout(() => {
+                    [0, 1, 2, 3].forEach(j => {
+                        scheduler.enqueue(() => new Promise((subResolve) => {
+                            setTimeout(() => {
+                                executed.push((i * 10) + j);
+                                subResolve();
+                            });
+                        }));
                     });
-                }),
-            });
+                    resolve();
+                });
+            }));
         });
 
         await scheduler.waitForIdle();
 
-        expect(executed).to.deep.equal([0, 1, 2, 3, 4, 5, 6, 7, 8, 9]);
+        executed.sort((a, b) => a - b);
+        expect(executed).to.deep.equal([0, 1, 2, 3, 10, 11, 12, 13, 20, 21, 22, 23, 30, 31, 32, 33]);
     });
 
     it('should trigger idle listeners correctly when some tasks fail', async () => {
@@ -217,25 +222,31 @@ describe('Scheduler', () => {
 
         const executed: number[] = [];
 
-        [0, 1, 2, 3, 4, 5, 6, 7, 8, 9].forEach(i => {
-            scheduler.enqueue({
-                priority: 1,
-                execute: () => new Promise((resolve, reject) => {
-                    setTimeout(() => {
-                        if (i % 2 === 0) {
-                            executed.push(i);
-                            resolve();
-                        } else {
-                            reject(new Error('oof'));
-                        }
+        [0, 1, 2, 3].forEach(i => {
+            scheduler.enqueue(() => new Promise((resolve) => {
+                setTimeout(() => {
+                    [0, 1, 2, 3].forEach(j => {
+                        scheduler.enqueue(() => new Promise((subResolve, subReject) => {
+                            setTimeout(() => {
+                                const n = (i * 10) + j;
+                                if (n % 2 === 0) {
+                                    executed.push(n);
+                                    subResolve();
+                                } else {
+                                    subReject(new Error('oof'));
+                                }
+                            });
+                        })).catch(() => { /* Ignore */ });
                     });
-                }),
-            }).catch(() => { /* Ignore */ });
+                    resolve();
+                });
+            }));
         });
 
         await scheduler.waitForIdle();
 
-        expect(executed).to.deep.equal([0, 2, 4, 6, 8]);
+        executed.sort((a, b) => a - b);
+        expect(executed).to.deep.equal([0, 2, 10, 12, 20, 22, 30, 32]);
     });
 
 });
