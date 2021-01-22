@@ -140,7 +140,9 @@ export default class Scheduler {
 
     private _switchToIdle() {
         this._isExecuting = false;
-        for (const { resolve } of this._idleListeners) {
+        const idleListeners = this._idleListeners;
+        this._idleListeners = [];
+        for (const { resolve } of idleListeners) {
             try {
                 resolve();
             } catch (e) {}
