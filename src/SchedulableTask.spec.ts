@@ -190,4 +190,52 @@ describe('Scheduler', () => {
         expect(result).to.eql([ 0, 0, 2, 2, 4, 4, 6, 6, 8, 8 ]);
     });
 
+    it('should trigger idle listeners correctly when every task succeeds', async () => {
+        const scheduler = new Scheduler(2);
+
+        const executed: number[] = [];
+
+        [0, 1, 2, 3, 4, 5, 6, 7, 8, 9].forEach(i => {
+            scheduler.enqueue({
+                priority: 1,
+                execute: () => new Promise((resolve) => {
+                    setTimeout(() => {
+                        executed.push(i);
+                        resolve();
+                    });
+                }),
+            });
+        });
+
+        await scheduler.waitForIdle();
+
+        expect(executed).to.deep.equal([0, 1, 2, 3, 4, 5, 6, 7, 8, 9]);
+    });
+
+    it('should trigger idle listeners correctly when some tasks fail', async () => {
+        const scheduler = new Scheduler(2);
+
+        const executed: number[] = [];
+
+        [0, 1, 2, 3, 4, 5, 6, 7, 8, 9].forEach(i => {
+            scheduler.enqueue({
+                priority: 1,
+                execute: () => new Promise((resolve, reject) => {
+                    setTimeout(() => {
+                        if (i % 2 === 0) {
+                            executed.push(i);
+                            resolve();
+                        } else {
+                            reject(new Error('oof'));
+                        }
+                    });
+                }),
+            }).catch(() => { /* Ignore */ });
+        });
+
+        await scheduler.waitForIdle();
+
+        expect(executed).to.deep.equal([0, 2, 4, 6, 8]);
+    });
+
 });
