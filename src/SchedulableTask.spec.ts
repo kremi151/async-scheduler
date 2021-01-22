@@ -249,4 +249,9 @@ describe('Scheduler', () => {
         expect(executed).to.deep.equal([0, 2, 10, 12, 20, 22, 30, 32]);
     });
 
+    it('should resolve waitForIdle directly if already idle', async () => {
+        const scheduler = new Scheduler(2);
+        await scheduler.waitForIdle();
+    });
+
 });

@@ -150,6 +150,9 @@ export default class Scheduler {
     }
 
     waitForIdle(): Promise<void> {
+        if (!this._isExecuting) {
+            return Promise.resolve();
+        }
         return new Promise((resolve, reject) => {
             this._idleListeners.push({ resolve, reject });
         });
