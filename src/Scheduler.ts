@@ -90,6 +90,10 @@ export default class Scheduler {
         return this._queue.find((task) => task.state === ExecutionState.PENDING);
     }
 
+    private _isIdle(): boolean {
+        return this._queue.length === 0 || !this._queue.find((task) => task.state !== ExecutionState.TERMINATED);
+    }
+
     private _removeTaskAt(index: number) {
         this._queue.splice(index, 1);
     }
@@ -119,7 +123,7 @@ export default class Scheduler {
         for (let i = 0 ; i < launchable ; i++) {
             const task = this._findFirstPendingTask();
             if (!task) {
-                if (executing === 0) {
+                if (this._isIdle()) {
                     this._switchToIdle();
                 }
                 return;

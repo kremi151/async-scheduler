@@ -254,4 +254,19 @@ describe('Scheduler', () => {
         await scheduler.waitForIdle();
     });
 
+    it('should resolve waitForIdle only when tasks have finished if n(tasks) < n(maxTasks)', async () => {
+        const scheduler = new Scheduler(4);
+
+        const results: number[] = [];
+        scheduler.enqueue(() => new Promise((resolve) => {
+            setTimeout(() => {
+                results.push(42);
+                resolve();
+            })
+        })).then(() => {});
+
+        await scheduler.waitForIdle();
+        expect(results).to.deep.equal([42]);
+    });
+
 });
