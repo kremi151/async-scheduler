@@ -26,6 +26,8 @@ interface MutexCheckResult<T> {
     canceled: boolean;
 }
 
+type LoggerFunc = (...data: any[]) => void;
+
 function rejectTask(task: ScheduledTask<any>, error: any) {
     for (let listener of task.listeners) {
         listener.reject(error);
@@ -40,11 +42,18 @@ export default class Scheduler {
     private _queue: ScheduledTask<any>[] = [];
     private _isExecuting: boolean = false;
     private _idleListeners: Resolvable<void>[] = [];
+    private readonly _errorLog: LoggerFunc;
 
     constructor(maxConcurrentTasks: number, options: SchedulerOptions = {}) {
         this._maxConcurrentTasks = maxConcurrentTasks;
         this._samePriorityMutex = !!options.samePriorityMutex;
         this._mutexStrategy = options.mutexStrategy || mutexEquality;
+
+        if (options.disableLogging) {
+            this._errorLog = () => {};
+        } else {
+            this._errorLog = console.error;
+        }
     }
 
     enqueue<T, M>(task: SchedulableTask<T, M> | (() => Promise<T>)): Promise<T> {
@@ -129,16 +138,25 @@ export default class Scheduler {
                 return;
             }
             task.state = ExecutionState.EXECUTING;
-            const promise = this._executeTask(task);
-            for (let listener of task.listeners) {
-                promise.then((result) => {
-                    listener.resolve(result);
-                    return result;
-                }).catch((error) => {
-                    listener.reject(error);
-                    return error;
+            this._executeTask(task)
+                .then((result) => {
+                    for (const { resolve } of task.listeners) {
+                        try {
+                            resolve(result);
+                        } catch (e) {
+                            this._errorLog('An error occurred while resolving listener', e);
+                        }
+                    }
+                })
+                .catch((error) => {
+                    for (const { reject } of task.listeners) {
+                        try {
+                            reject(error);
+                        } catch (e) {
+                            this._errorLog('An error occurred while rejecting listener', e);
+                        }
+                    }
                 });
-            }
         }
     }
 

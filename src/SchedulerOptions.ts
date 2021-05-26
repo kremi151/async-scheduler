@@ -12,4 +12,9 @@ export interface SchedulerOptions {
      */
     mutexStrategy?: SchedulerMutexStrategy;
 
+    /**
+     * Whether to disable any logging
+     */
+    disableLogging?: boolean;
+
 }
