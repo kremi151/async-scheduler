@@ -27,6 +27,8 @@ jobs:
         uses: borales/actions-yarn@v2.0.0
         with:
           cmd: test-jenkins
+      - name: Change ownership of build directory
+        run: sudo chown -R $(id -u):$(id -g) ${{ github.workspace }}/build
       - name: Report test results
         uses: ashley-taylor/junit-report-annotations-action@master
         with:
