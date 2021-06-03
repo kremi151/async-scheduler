@@ -270,3 +270,146 @@ describe('Scheduler', () => {
     });
 
 });
+
+describe('Task success listeners', () => {
+
+    it('should all be called', async () => {
+        const scheduler = new Scheduler(4);
+
+        const task = scheduler.enqueue(() => new Promise((resolve) => setTimeout(resolve)));
+
+        const results = await Promise.all([0, 1, 2, 3, 4, 5].map((i) => task.then(() => 10 - i)));
+        expect(results).to.deep.equal([10, 9, 8, 7, 6, 5]);
+    });
+
+    it('should all be called even if some don\'t resolve', async () => {
+        const scheduler = new Scheduler(4);
+
+        const task = scheduler.enqueue(() => new Promise((resolve) => setTimeout(resolve)));
+
+        const results: number[] = [];
+        const listeners = [0, 1, 2, 3, 4, 5].map((i) => task.then(() => new Promise((resolve) => {
+            results.push(i);
+            if (i % 2 == 1) {
+                // Don't resolve
+                return;
+            }
+            resolve();
+        })));
+        await Promise.all([0, 2, 4].map((i) => listeners[i]));
+        expect(results).to.deep.equal([0, 1, 2, 3, 4, 5]);
+    });
+
+    it('should all be called when the task resolves to an already enqueued one', async () => {
+        const scheduler = new Scheduler(4);
+
+        let taskCollisionCalled = 0;
+
+        const tasks = [0, 1].map((i) => scheduler.enqueue({
+            priority: 1,
+            mutex: 1,
+            execute: () => new Promise<number>((resolve) => setTimeout(() => resolve(i * 2))),
+            onTaskCollision: () => {
+                taskCollisionCalled++;
+                return TaskCollisionStrategy.RESOLVE_THIS;
+            },
+        }).then((n) => n * 2));
+
+        const results = await Promise.all(tasks);
+        expect(taskCollisionCalled).to.be.equal(1);
+        expect(results).to.deep.equal([0, 0]);
+    });
+
+    it('should all be called when the task resolves to an already enqueued one even if some listeners don\'t resolve', async () => {
+        const scheduler = new Scheduler(4);
+
+        let taskCollisionCalled = 0;
+
+        const results: number[] = [];
+        const tasks = [0, 1].map((i) => scheduler.enqueue({
+            priority: 1,
+            mutex: 1,
+            execute: () => new Promise((resolve) => setTimeout(resolve)),
+            onTaskCollision: () => {
+                taskCollisionCalled++;
+                return TaskCollisionStrategy.RESOLVE_THIS;
+            },
+        }).then(() => new Promise((resolve) => {
+            results.push(i);
+            if (i % 2 == 0) {
+                // Don't resolve
+                return;
+            }
+            resolve();
+        })));
+
+        await tasks[1];
+        expect(taskCollisionCalled).to.be.equal(1);
+        expect(results).to.deep.equal([0, 1]);
+    });
+
+    it('should all be called when the task resolves to one to be enqueued', async () => {
+        const scheduler = new Scheduler(4);
+
+        let taskCollisionCalled = 0;
+
+        const tasks = [0, 1].map((i) => scheduler.enqueue({
+            priority: 1,
+            mutex: 1,
+            execute: () => new Promise<number>((resolve) => setTimeout(() => resolve(i * 2))),
+            onTaskCollision: () => {
+                taskCollisionCalled++;
+                return TaskCollisionStrategy.RESOLVE_OTHER;
+            },
+        }).then((n) => n * 2));
+
+        const results = await Promise.all(tasks);
+        expect(taskCollisionCalled).to.be.equal(1);
+        expect(results).to.deep.equal([4, 4]);
+    });
+
+    it('should all be called when the task resolves to one to be enqueued even if some listeners don\'t resolve', async () => {
+        const scheduler = new Scheduler(4);
+
+        let taskCollisionCalled = 0;
+
+        const results: number[] = [];
+        const tasks = [0, 1].map((i) => scheduler.enqueue({
+            priority: 1,
+            mutex: 1,
+            execute: () => new Promise((resolve) => setTimeout(resolve)),
+            onTaskCollision: () => {
+                taskCollisionCalled++;
+                return TaskCollisionStrategy.RESOLVE_OTHER;
+            },
+        }).then(() => new Promise((resolve) => {
+            results.push(i);
+            if (i % 2 == 0) {
+                // Don't resolve
+                return;
+            }
+            resolve();
+        })));
+
+        await tasks[1];
+        expect(taskCollisionCalled).to.be.equal(1);
+        expect(results).to.deep.equal([1, 0]);
+    });
+
+    it('should all be called even if some throw an error', async () => {
+        const scheduler = new Scheduler(4);
+
+        const task = scheduler.enqueue(() => new Promise((resolve) => setTimeout(resolve)));
+
+        const results: number[] = [];
+        const listeners = [0, 1, 2, 3, 4, 5].map((i) => task.then(() => new Promise((resolve) => {
+            results.push(i);
+            if (i % 2 == 1) {
+                throw new Error('ouch');
+            }
+            resolve();
+        }).catch(() => {})));
+        await Promise.all([0, 2, 4].map((i) => listeners[i]));
+        expect(results).to.deep.equal([0, 1, 2, 3, 4, 5]);
+    });
+});
