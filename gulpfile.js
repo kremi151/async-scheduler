@@ -48,7 +48,7 @@ task('package_json', async () => {
     packageJson.files = [
         'lib/**',
         'LICENSE',
-        'README',
+        'README.MD',
     ];
 
     if (asVersion) {
