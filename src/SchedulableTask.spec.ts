@@ -271,24 +271,37 @@ describe('Scheduler', () => {
 
 });
 
-describe('Task success listeners', () => {
+[
+    {
+        title: 'Task success listeners',
+        simpleTimeout: (resolve: any, _reject: any) => setTimeout(resolve),
+        complexTimeout: (input: number) => (resolve: any, _reject: any) => setTimeout(() => resolve(input * 2)),
+        listen: <In, Out> (task: Promise<In>, handler: (val: In) => Out) => task.then(handler),
+    },
+    {
+        title: 'Task error listeners',
+        simpleTimeout: (resolve: any, reject: any) => setTimeout(() => reject(new Error())),
+        complexTimeout: (input: number) => (resolve: any, reject: any) => setTimeout(() => reject(input * 2)),
+        listen: <In, Out> (task: Promise<In>, handler: (val: In) => Out) => task.catch(handler),
+    },
+].map(({ title, simpleTimeout, complexTimeout, listen }) => describe(title, () => {
 
     it('should all be called', async () => {
         const scheduler = new Scheduler(4);
 
-        const task = scheduler.enqueue(() => new Promise((resolve) => setTimeout(resolve)));
+        const task = scheduler.enqueue(() => new Promise(simpleTimeout));
 
-        const results = await Promise.all([0, 1, 2, 3, 4, 5].map((i) => task.then(() => 10 - i)));
+        const results = await Promise.all([0, 1, 2, 3, 4, 5].map((i) => listen(task, () => 10 - i)));
         expect(results).to.deep.equal([10, 9, 8, 7, 6, 5]);
     });
 
     it('should all be called even if some don\'t resolve', async () => {
         const scheduler = new Scheduler(4);
 
-        const task = scheduler.enqueue(() => new Promise((resolve) => setTimeout(resolve)));
+        const task = scheduler.enqueue(() => new Promise(simpleTimeout));
 
         const results: number[] = [];
-        const listeners = [0, 1, 2, 3, 4, 5].map((i) => task.then(() => new Promise((resolve) => {
+        const listeners = [0, 1, 2, 3, 4, 5].map((i) => listen(task, () => new Promise((resolve) => {
             results.push(i);
             if (i % 2 == 1) {
                 // Don't resolve
@@ -305,15 +318,15 @@ describe('Task success listeners', () => {
 
         let taskCollisionCalled = 0;
 
-        const tasks = [0, 1].map((i) => scheduler.enqueue({
+        const tasks = [0, 1].map((i) => listen(scheduler.enqueue({
             priority: 1,
             mutex: 1,
-            execute: () => new Promise<number>((resolve) => setTimeout(() => resolve(i * 2))),
+            execute: () => new Promise<number>(complexTimeout(i)),
             onTaskCollision: () => {
                 taskCollisionCalled++;
                 return TaskCollisionStrategy.RESOLVE_THIS;
             },
-        }).then((n) => n * 2));
+        }), (n) => n * 2));
 
         const results = await Promise.all(tasks);
         expect(taskCollisionCalled).to.be.equal(1);
@@ -326,15 +339,15 @@ describe('Task success listeners', () => {
         let taskCollisionCalled = 0;
 
         const results: number[] = [];
-        const tasks = [0, 1].map((i) => scheduler.enqueue({
+        const tasks = [0, 1].map((i) => listen(scheduler.enqueue({
             priority: 1,
             mutex: 1,
-            execute: () => new Promise((resolve) => setTimeout(resolve)),
+            execute: () => new Promise(simpleTimeout),
             onTaskCollision: () => {
                 taskCollisionCalled++;
                 return TaskCollisionStrategy.RESOLVE_THIS;
             },
-        }).then(() => new Promise((resolve) => {
+        }), () => new Promise((resolve) => {
             results.push(i);
             if (i % 2 == 0) {
                 // Don't resolve
@@ -353,15 +366,15 @@ describe('Task success listeners', () => {
 
         let taskCollisionCalled = 0;
 
-        const tasks = [0, 1].map((i) => scheduler.enqueue({
+        const tasks = [0, 1].map((i) => listen(scheduler.enqueue({
             priority: 1,
             mutex: 1,
-            execute: () => new Promise<number>((resolve) => setTimeout(() => resolve(i * 2))),
+            execute: () => new Promise<number>(complexTimeout(i)),
             onTaskCollision: () => {
                 taskCollisionCalled++;
                 return TaskCollisionStrategy.RESOLVE_OTHER;
             },
-        }).then((n) => n * 2));
+        }), (n) => n * 2));
 
         const results = await Promise.all(tasks);
         expect(taskCollisionCalled).to.be.equal(1);
@@ -374,15 +387,15 @@ describe('Task success listeners', () => {
         let taskCollisionCalled = 0;
 
         const results: number[] = [];
-        const tasks = [0, 1].map((i) => scheduler.enqueue({
+        const tasks = [0, 1].map((i) => listen(scheduler.enqueue({
             priority: 1,
             mutex: 1,
-            execute: () => new Promise((resolve) => setTimeout(resolve)),
+            execute: () => new Promise(simpleTimeout),
             onTaskCollision: () => {
                 taskCollisionCalled++;
                 return TaskCollisionStrategy.RESOLVE_OTHER;
             },
-        }).then(() => new Promise((resolve) => {
+        }), () => new Promise((resolve) => {
             results.push(i);
             if (i % 2 == 0) {
                 // Don't resolve
@@ -399,10 +412,10 @@ describe('Task success listeners', () => {
     it('should all be called even if some throw an error', async () => {
         const scheduler = new Scheduler(4);
 
-        const task = scheduler.enqueue(() => new Promise((resolve) => setTimeout(resolve)));
+        const task = scheduler.enqueue(() => new Promise(simpleTimeout));
 
         const results: number[] = [];
-        const listeners = [0, 1, 2, 3, 4, 5].map((i) => task.then(() => new Promise((resolve) => {
+        const listeners = [0, 1, 2, 3, 4, 5].map((i) => listen(task, () => new Promise((resolve) => {
             results.push(i);
             if (i % 2 == 1) {
                 throw new Error('ouch');
@@ -412,4 +425,4 @@ describe('Task success listeners', () => {
         await Promise.all([0, 2, 4].map((i) => listeners[i]));
         expect(results).to.deep.equal([0, 1, 2, 3, 4, 5]);
     });
-});
+}));
